@@ -1,5 +1,4 @@
 from collections import defaultdict
-import pandas as pd
 from typing import Generator, Tuple, Union
 from gurobipy import Model, GRB, TempConstr, Var, tupledict, quicksum, max_, min_
 from itertools import product, chain
@@ -25,38 +24,6 @@ from vaccine import (
     COMM4_DELAY_COST,
     COMM5_RATIO_TOLERANCE,
 )
-
-def print_vars(vars):
-    for var_key, var in vars.items():
-        print(*var_key, " : ", var.getValue())
-
-def convert_vars(vars):
-    res = []
-    for var_key, var in vars.items():
-        res.append((*var_key, int(var.getValue())))
-    return res
-
-def convert_w_vars(vars):
-    res = []
-    for var_key, var in vars.items():
-        if type(var) == int:
-            res.append((*var_key, None))
-        else:
-            res.append((*var_key, int(var.x)))
-    return res
-
-def convert_id_vars(vars):
-    res = []
-    for var_key, var in vars.items():
-        res.append((var_key.replace(" ", ""), int(var.getValue())))
-    return res
-
-def convert_wid_vars(vars):
-    res = []
-    for var_key, var in vars.items():
-        res.append((var_key[0], var_key[1].replace(" ", ""), int(var.x)))
-
-    return res
 
 # Type defs
 
@@ -143,16 +110,6 @@ for constraint in comm1_base_constraint_generator:
 
 model.optimize()
 
-comm1_id = pd.DataFrame(convert_id_vars(week_agnostic_ID_vars), columns=["ID", "Vaccines sent to ID"])
-comm1_idtolvc = pd.DataFrame(convert_vars(week_agnostic_IDtoLVC_vars), columns=["ID", "LVC", "Vaccines sent from ID to LVC"])
-comm1_ccdtolvc = pd.DataFrame(convert_vars(week_agnostic_CCDtoLVC_vars), columns=["CCD", "LVC", "People sent from ID to LVC"])
-
-writer = pd.ExcelWriter("comm1.xlsx")
-comm1_id.to_excel(writer, 'IDs', index=False)
-comm1_idtolvc.to_excel(writer, 'IDtoLVCs', index=False)
-comm1_ccdtolvc.to_excel(writer, 'CCDtoLVCs', index=False)
-writer.save()
-
 ## Communication 2
 
 ### Constraint definitions
@@ -186,16 +143,6 @@ for constraint in comm2_max_constraint_generator:
     model.addConstr(constraint)
 
 model.optimize()
-
-comm2_id = pd.DataFrame(convert_id_vars(week_agnostic_ID_vars), columns=["ID", "Vaccines sent to ID"])
-comm2_idtolvc = pd.DataFrame(convert_vars(week_agnostic_IDtoLVC_vars), columns=["ID", "LVC", "Vaccines sent from ID to LVC"])
-comm2_ccdtolvc = pd.DataFrame(convert_vars(week_agnostic_CCDtoLVC_vars), columns=["CCD", "LVC", "People sent from ID to LVC"])
-
-writer = pd.ExcelWriter("comm2.xlsx")
-comm2_id.to_excel(writer, 'IDs', index=False)
-comm2_idtolvc.to_excel(writer, 'IDtoLVCs', index=False)
-comm2_ccdtolvc.to_excel(writer, 'CCDtoLVCs', index=False)
-writer.save()
 
 ## Communication 3
 
@@ -245,16 +192,6 @@ for constraint in comm3_max_weekly_constraint_generator:
 
 model.optimize()
 
-comm3_id = pd.DataFrame(convert_wid_vars(ID_vars), columns=["Week", "ID", "Vaccines sent to ID"])
-comm3_idtolvc = pd.DataFrame(convert_w_vars(IDtoLVC_vars), columns=["Week", "ID", "LVC", "Vaccines sent from ID to LVC"])
-comm3_ccdtolvc = pd.DataFrame(convert_w_vars(CCDtoLVC_vars), columns=["Week", "CCD", "LVC", "People sent from ID to LVC"])
-
-writer = pd.ExcelWriter("comm3.xlsx")
-comm3_id.to_excel(writer, 'IDs', index=False)
-comm3_idtolvc.to_excel(writer, 'IDtoLVCs', index=False)
-comm3_ccdtolvc.to_excel(writer, 'CCDtoLVCs', index=False)
-writer.save()
-
 ## Communication 4
 
 ### Cost definitions
@@ -268,16 +205,6 @@ comm4_total_cost_with_delay = total_ID_cost + total_IDtoLVC_cost + total_CCDtoLV
 model.setObjective(comm4_total_cost_with_delay, GRB.MINIMIZE)
 
 model.optimize()
-
-comm4_id = pd.DataFrame(convert_wid_vars(ID_vars), columns=["Week", "ID", "Vaccines sent to ID"])
-comm4_idtolvc = pd.DataFrame(convert_w_vars(IDtoLVC_vars), columns=["Week", "ID", "LVC", "Vaccines sent from ID to LVC"])
-comm4_ccdtolvc = pd.DataFrame(convert_w_vars(CCDtoLVC_vars), columns=["Week", "CCD", "LVC", "People sent from ID to LVC"])
-
-writer = pd.ExcelWriter("comm4.xlsx")
-comm4_id.to_excel(writer, 'IDs', index=False)
-comm4_idtolvc.to_excel(writer, 'IDtoLVCs', index=False)
-comm4_ccdtolvc.to_excel(writer, 'CCDtoLVCs', index=False)
-writer.save()
 
 ## Communication 5
 
@@ -317,12 +244,3 @@ for constraint in comm5_distribution_tolerance_constraints:
 
 model.optimize()
 
-comm5_id = pd.DataFrame(convert_wid_vars(ID_vars), columns=["Week", "ID", "Vaccines sent to ID"])
-comm5_idtolvc = pd.DataFrame(convert_w_vars(IDtoLVC_vars), columns=["Week", "ID", "LVC", "Vaccines sent from ID to LVC"])
-comm5_ccdtolvc = pd.DataFrame(convert_w_vars(CCDtoLVC_vars), columns=["Week", "CCD", "LVC", "People sent from ID to LVC"])
-
-writer = pd.ExcelWriter("comm5.xlsx")
-comm5_id.to_excel(writer, 'IDs', index=False)
-comm5_idtolvc.to_excel(writer, 'IDtoLVCs', index=False)
-comm5_ccdtolvc.to_excel(writer, 'CCDtoLVCs', index=False)
-writer.save()
