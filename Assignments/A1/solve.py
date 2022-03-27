@@ -139,6 +139,7 @@ comm2_max_constraint_generator = chain(
     maximum_LVC_constraints(week_agnostic_IDtoLVC_vars, maximum=COMM2_LVC_MAX), 
 )
 
+
 for constraint in comm2_max_constraint_generator:
     model.addConstr(constraint)
 
