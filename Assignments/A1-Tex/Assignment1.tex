@@ -1,0 +1,293 @@
+\documentclass[12pt]{article}
+\input{../../../../preamble/preamble.tex}
+\title{Pacific Paradise - Vaccination Distribution Strategy}
+\author{Benjamin Kruger - 46465522 , James Seymour - 46417585,MATH3202 Assignment 1}
+\usepackage{physics}
+\usepackage{float}
+\geometry{top=2cm}
+\begin{document}
+    \maketitle
+    \section{Part A - Report to Boss}
+    \subsection{Sets}\label{1.1}
+        \begin{align*}
+            WEEKS &= \{\text{WEEK}_0, \text{WEEK}_1, \cdots, \text{WEEK}_5\}\\
+            IDs &= \{\text{ID-A, ID-B, ID-C}\}\\
+            LVCs &= \{\text{LVC}_0, \text{LVC}_1, \cdots, \text{LVC}_7\}\\
+            CCDs &= \{\text{CCD}_0, \text{CCD}_1, \cdots, \text{CCD}_24\}
+        \end{align*}
+        These sets represent the weeks in the project, the different ID centers, the difference LVC centers and the different CCDs respectively. Note we enumerate from \(0\) as this is how the code is written.
+    \subsection{Data}
+        \noindent \textbf{IDtoLVC}: The distances from each ID to each LVC.
+        \vskip 0.1cm
+        \noindent\textbf{CCDPop}: The number of people in each CCD.
+        \vskip 0.1cm
+        \noindent\textbf{CCDtoLVC}: The distances from each CCD to LVC.
+        \vskip 0.1cm
+        \noindent\textbf{ID\_import\_cost\_per\_dose}: The cost for a vaccine at each ID.
+        \vskip 0.1cm
+        \noindent\textbf{COMM2\_ID\_Max}: The maximum number of vaccines which can be sent to any ID.
+        \vskip 0.1cm
+        \noindent\textbf{COMM2\_LVC\_Max}: The maximum number of vaccines to be given out at an LVC.
+        \vskip 0.1cm
+        \noindent\textbf{COMM3\_LVC\_Max}: The maximum number of weekly vaccines to be given out at an LVC.
+        \vskip 0.1cm
+	\noindent\textbf{COMM4\_Delay}: The increase in cost for delaying administration of a vaccine \(1\) week.
+        \vskip 0.1cm
+        \noindent\textbf{COMM5\_Ratio\_tolerence}: The limit of the difference in the fraction of the population vaccinated at each CCD, for each week.\\
+        \subsection{Design Variables}
+        We first have two intermediate design variables. The reason for this is we need to calculate the cost to get to each LVC from each ID and CCD respectively from the given data. The variables created for this aren't dependent on the week until later communications, but it is still useful to include this dimension in the variables to have this implementation ready.
+        \vskip 0.2cm
+        We define the sets of variables:
+        \textbf{IDtoLVC\_cost\_per\_dose} = \(0.2 \times\) \textbf{IDtoLVC}. This is the cost to transport one vaccine from an ID to an LVC.\\
+        \textbf{CCDtoLVC\_cost\_per\_dose} = CCDtoLVC. This is the cost for a single person from a CCD to receive a vaccine at an LVC.\\
+	We reassign these variables to \textbf{IDtoLVC\_costs} and \textbf{CCDtoLVC\_costs} respectively, so that we can index these variables with our elements of our sets \ref{1.1} rather than integers. For example, (week, ID, LVC) in \textbf{IDtoLVC\_costs} uniquely identifies the cost of sending a vaccine from a specific ID to a specific LVC in a specific week. 
+        \vskip 0.3cm
+        \noindent\textbf{ID\_Vars}: The set of variables containing the number of vaccines sent to each ID in each week.
+        \vskip 0.2cm
+        \noindent\textbf{CCDtoLVC\_Vars}: The set of variables containing the number of people who travel from each CCD to each LVC to receive a vaccine each week.
+        \vskip 0.2cm
+        \noindent\textbf{IDtoLVC\_Vars}: The set of variables containing the number of vaccines sent from each ID to each LVC each week.
+        \vskip 0.2cm
+	    \noindent\textbf{CCD\_ratio\_vaccinated\_vars}: The ratio of people vaccinated in a CCD to the total population, each week (defined in terms of CCDtoLVC\_vars).
+        \vskip 0.2cm
+	We make a note that in CCDtoLVC\_Vars, some combinations of (week, CCD, LVC) will not have a mapped variable as the CCD is not adjacent to the LVC. In these cases, indexing this variable simply returns \(0\), as summing over \(0\) will have no effect in any constraints.\\
+    \subsection{Objective Function for Communication 1-3}
+        We want to minimise the total cost.\\
+        \[\text{Total Cost} = \text{total\_ID\_cost} + \text{total\_IDtoLVC\_cost} + \text{total\_CCDtoLVC\_cost}\]
+        \begin{align*}
+            \text{total\_ID\_cost} &= \sum_{w \in WEEKS}\sum_{i\in IDs}\text{ID\_Vars}_{w,i}\times \text{ID\_import\_cost\_per\_dose}_{w,i}\\
+            \text{total\_IDtoLVC\_cost} &= \sum_{w\in WEEKS}\sum_{i\in IDs}\sum_{l\in LVCs}\text{IDtoLVC\_Vars}_{w,i,l}\times \text{IDtoLVC\_cost\_per\_dose}_{w,i,l}\\
+            \text{total\_CCDtoLVC\_cost} &= \sum_{w\in WEEKS}\sum_{c\in CCDs}\sum_{l\in LVCs}\text{CCDtoLVC\_cost\_per\_dose}_{w,c,l}\times\text{CCDtoLVC\_Vars}_{w,c,l}
+        \end{align*}
+        So, we want to minimise 
+        \begin{align*}
+            \text{Total Cost} &= \sum_{w \in WEEKS}\sum_{i\in IDs}\text{ID\_Vars}_{w,i}\times \text{ID\_import\_cost\_per\_dose}_{w,i}\\
+            &+ \sum_{w\in WEEKS}\sum_{i\in IDs}\sum_{l\in LVCs}\text{IDtoLVC\_Vars}_{w,i,l}\times \text{IDtoLVC\_cost\_per\_dose}_{w,i,l}\\
+            &+ \sum_{w\in WEEKS}\sum_{c\in CCDs}\sum_{l\in LVCs}\text{CCDtoLVC\_cost\_per\_dose}_{w,c,l}\times\text{CCDtoLVC\_Vars}_{w,c,l}
+        \end{align*}
+    \subsection{Communication 1 Constraints}
+        \begin{align}
+            \displaystyle\sum_{w\in WEEKS}\displaystyle\sum_{l\in LVCs} \text{CCDtoLVC\_Vars}_{w,c,l} & \le \text{CCD\_Pops}, \quad \text{for all } c \in CCDs\\
+            \displaystyle\sum_{w\in WEEKS}\displaystyle\sum_{c\in CCDs} \text{CCDtoLVC\_Vars}_{w,c,l} &\le \displaystyle\sum_{w\in WEEKS}\displaystyle\sum_{i \in IDs} \text{IDtoLVC\_Vars}_{w,i,l}, \quad \text{for all } l \in LVCs\\
+            \displaystyle\sum_{w\in WEEKS}\displaystyle\sum_{l\in LVC}\text{IDtoLVC\_Vars}_{w,i,l} &\le \displaystyle\sum_{w\in WEEKS}\text{ID\_Vars}_{w,i}, \quad \text{for all } i \in IDs
+        \end{align}
+	Constraint \((1)\) ensures that the number of people going to any accessible LVC from the each CCD (across all the weeks) cannot exceed the number of people in that CCD.\\
+        Constraint \((2)\) ensures that the number of people who attend this LVC cannot exceed the number of vaccines being sent to each LVC, over all weeks.\\
+        Constraint \((3)\) ensures that the number of vaccines being sent out to each LVC cannot exceed the number of vaccines sent to this ID over all weeks.
+    \subsection{Communication 2 Constraints}
+        \begin{align}
+            \displaystyle\sum_{w\in WEEKS} \text{ID\_Vars}_{w,i} &\le \text{COMM2\_ID\_Max}, \quad \text{for all } i \in IDs\\
+            \displaystyle\sum_{w\in WEEKS}\displaystyle\sum_{i\in IDs}\text{IDtoLVC\_Vars}_{w,i,l} &\le \text{COMM2\_LVC\_Max}, \quad \text{for all } l \in LVCs
+        \end{align}
+        Constraint \((4)\) ensures that the number of vaccines at each ID does not exceed the maximum bound over all weeks.\\
+        Constraint \((5)\) ensures that the number of vaccines administered at each LVC does not exceed the maximum bound over all weeks.
+    \subsection{Communication 3 Constraints}
+	In Communication \(3\), we are now introduced to the notion of weeks. Therefore, in addition to the constraint given, we must apply the previous constraints that were built into the problem, now on a weekly basis.
+        \begin{align}
+            \displaystyle\sum_{c\in CCDs} \text{CCDtoLVC\_Vars}_{w,c,l} &\le \displaystyle\sum_{i \in IDs} \text{IDtoLVC\_Vars}_{w,i,l}, \quad \text{for all } w \in WEEKS, \text{ for all } l \in lVCs\\
+            \displaystyle\sum_{l\in LVC}\text{IDtoLVC\_Vars}_{w,i,l} &\le \text{ID\_Vars}_{w,i}, \quad \text{for all } w \in WEEKS, \text{ for all } i \in IDs\\
+            \displaystyle\sum_{i \in IDs} \text{IDtoLVC\_Vars}_{w,i,l} &\le \text{COMM3\_LVC\_Max}, \quad \text{for all } w \in WEEKS, \text{ for all } l \in lVCs
+        \end{align}
+        Constraint \((6)\) ensures that the number of people who attend this LVC cannot exceed the number of vaccines being sent to each LVC, for each week.\\
+        Constraint \((7)\) ensures that the number of vaccines being sent out to each LVC cannot exceed the number of vaccines sent to this ID for each week.\\
+	Constraint \((8)\) limits the number of vaccines that can be sent to each LVC in each week.
+    \subsection{Communication 4 Objective Function}
+        In Communication 4, it will cost \(\$10\) extra per week to delay administration of a vaccine. We attribute this to the CCDtoLVC\_vars, and therefore the total\_CCDtoLVC\_cost changes. 
+        \[\text{CCDtoLVC\_costs\_with\_delay} = \sum_{w\in WEEKS}\sum_{c\in CCDs}\sum_{l\in LVCs}\text{CCDtoLVC\_costs}_{w,c,l} + (w)\times \text{COMM4\_delay}\]
+        Note the \((w)\) being multiplied refers to the integer index of the week - in code we have to separate "WEEKw" for \(w \in \{0,1,2,3,4,5\}\). Therefore,
+        \[\text{total\_CCDtoLVC\_with\_delay} = \sum_{w\in WEEKS}\sum_{c\in CCDs}\sum_{l\in LVCs} \text{CCDtoLVC\_Vars} \times \text{CCDtoLVC\_with\_delay}.\]
+        This makes the total cost we wish to minimise then,
+        \begin{align*}
+            \text{Total Cost} &= \sum_{w \in WEEKS}\sum_{i\in IDs}\text{ID\_Vars}_{w,i}\times \text{ID\_import\_cost\_per\_dose}_{w,i}\\
+            &+ \sum_{w\in WEEKS}\sum_{i\in IDs}\sum_{l\in LVCs}\text{IDtoLVC\_Vars}_{w,i,l}\times \text{IDtoLVC\_cost\_per\_dose}_{w,i,l}\\
+            &+ \sum_{w\in WEEKS}\sum_{c\in CCDs}\sum_{l\in LVCs} \text{CCDtoLVC\_Vars}_{w,c,l} \times \text{CCDtoLVC\_with\_delay}_{w,c,l}
+        \end{align*}
+    \subsection{Communication 5 Constraints}
+        \[\max\left\{\frac{\displaystyle\sum_{l\in LVCs}\text{CCDtoLVC\_Vars}_{w,c,l}}{\text{CCD\_Pops}_{c}}\right\} - \min\left\{\frac{\displaystyle\sum_{l\in LVCs}\text{CCDtoLVC\_Vars}_{w,c,l}}{\text{CCD\_Pops}_{c}}\right\} \le \text{COMM5\_Ratio\_Tolerence}\]
+        \(, \quad \text{for all } w\in WEEKS, c\in CCDs\)\\
+
+        This constraint ensures that the ratio of people getting vaccinated in a week to the population of the CCD differs by no more than COMM5\_Ratio\_Tolerance across the CCDs.
+    \section{Part B - Report to Pacific Paradise}
+
+        {
+        \setlength{\parindent}{0pt}
+        \setlength{\parskip}{0.3cm}
+
+        Communication 1:
+
+        Dear Pacific Paradise,
+        
+        Thankyou for contacting us. Given the data and problem description, we have designed an optimisation of the vaccine distribution strategy to minimise your costs. In the solution, we need to send enough vaccines to each LVC so as to not run out while administering vaccinations. We see that the optimal solution has,
+        \begin{center}
+            \begin{table}[H]
+                \begin{tabular}{|l|l|}
+                \hline
+                \multicolumn{1}{|c|}{\textbf{ID}} & \multicolumn{1}{c|}{\textbf{Vaccines sent to   ID}} \\ \hline
+                ID-A                              & 84657                                               \\ \hline
+                ID-B                              & 0                                                   \\ \hline
+                ID-C                              & 0                                                   \\ \hline
+                \end{tabular}
+                \end{table}
+        \end{center}
+    We see that all vaccines are sent to ID-A to be distributed. Indeed, for each CCD, the entire population goes to a single accessible LVC in the optimal solution. The total costs are \(\$11220506\) for the distribution.\\
+    We have attached specific details on how to execute this distribution strategy, and are happy to discuss this further.
+    
+    Please don't hesitate to get in contact for more information or additional needs!
+    
+    Kind regards,\\
+    Ben Kruger and James Seymour, Operations Research.\\
+
+
+    \hrule
+    
+    Communication 2:
+    
+    Dear Pacific Paradise,
+        
+    Given these new requirements, we have updated our solution. 
+    We have implemented the requirements that the number of vaccines at each ID doesn't exceed the maximum bound of \(34000\) and that the number of vaccines administered at each LVC does not exceed the maximum bound of 15000. This led us to a new a distribution of vaccines, 
+    \begin{center}
+        \begin{table}[h]
+            \begin{tabular}{|l|l|}
+            \hline
+            \multicolumn{1}{|c|}{\textbf{ID}} & \multicolumn{1}{c|}{\textbf{Vaccines sent to   ID}} \\ \hline
+            ID-A                              & 34000                                               \\ \hline
+            ID-B                              & 34000                                               \\ \hline
+            ID-C                              & 16657                                               \\ \hline
+            \end{tabular}
+            \end{table}
+    \end{center}
+    The total cost of this solution is \(\$13567747\).
+
+    Please don't hesitate to get in contact for more information or additional needs!
+    
+    Kind regards,\\
+    Ben Kruger and James Seymour, Operations Research.\\
+    \hrule
+    
+    Communication 3:
+    
+    Dear Pacific Paradise,
+    
+    We have implemented a weekly system for the vaccine roll-out, and have subsequently bounded the maximum number of weekly vaccines administered at each LVC to 2000. We have compiled a table of the number of vaccines sent to each ID week by week below. The total cost of this strategy is \(\$13602425\). 
+
+    \begin{center}
+        \begin{table}[H]
+            \begin{tabular}{|l|l|l|}
+            \hline
+            \multicolumn{1}{|c|}{\textbf{Week}} & \multicolumn{1}{c|}{\textbf{ID}} & \multicolumn{1}{c|}{\textbf{Vaccines sent to   ID}} \\ \hline
+            WEEK0                               & ID-A                             & 6300                                                \\ \hline
+            WEEK0                               & ID-B                             & 6300                                                \\ \hline
+            WEEK0                               & ID-C                             & 4200                                                \\ \hline
+            WEEK1                               & ID-A                             & 6795                                                \\ \hline
+            WEEK1                               & ID-B                             & 6300                                                \\ \hline
+            WEEK1                               & ID-C                             & 2100                                                \\ \hline
+            WEEK2                               & ID-A                             & 7591                                                \\ \hline
+            WEEK2                               & ID-B                             & 6300                                                \\ \hline
+            WEEK2                               & ID-C                             & 2100                                                \\ \hline
+            WEEK3                               & ID-A                             & 4200                                                \\ \hline
+            WEEK3                               & ID-B                             & 6300                                                \\ \hline
+            WEEK3                               & ID-C                             & 4057                                                \\ \hline
+            WEEK4                               & ID-A                             & 5413                                                \\ \hline
+            WEEK4                               & ID-B                             & 4200                                                \\ \hline
+            WEEK4                               & ID-C                             & 2100                                                \\ \hline
+            WEEK5                               & ID-A                             & 3701                                                \\ \hline
+            WEEK5                               & ID-B                             & 4600                                                \\ \hline
+            WEEK5                               & ID-C                             & 2100                                                \\ \hline
+            \end{tabular}
+            \end{table}
+    \end{center}
+    Please don't hesitate to get in contact for more information or additional needs!
+    
+    Kind regards,\\
+    Ben Kruger and James Seymour, Operations Research.\\
+    \hrule
+    
+    Communication 4:
+    
+    Dear Pacific Paradise,
+    
+    Given the cost for delaying administration of vaccinations, we have updated our model to account for this extra cost. We have attributed this cost to each person receiving a vaccination at an LVC in a given week. As expected, we encourage that more people are vaccinated earlier on in the program, while still adhering to the constraints given in the previous communications.
+
+    This total cost for this new solution is \(\$15374778\), with the relevant distribution below,
+    \begin{center}
+        \begin{table}[H]
+            \begin{tabular}{|l|l|l|}
+            \hline
+            \multicolumn{1}{|c|}{\textbf{Week}} & \multicolumn{1}{c|}{\textbf{ID}} & \multicolumn{1}{c|}{\textbf{Vaccines sent to   ID}} \\ \hline
+            WEEK0                               & ID-A                             & 7596                                                \\ \hline
+            WEEK0                               & ID-B                             & 6300                                                \\ \hline
+            WEEK0                               & ID-C                             & 2904                                                \\ \hline
+            WEEK1                               & ID-A                             & 6300                                                \\ \hline
+            WEEK1                               & ID-B                             & 6300                                                \\ \hline
+            WEEK1                               & ID-C                             & 4200                                                \\ \hline
+            WEEK2                               & ID-A                             & 6300                                                \\ \hline
+            WEEK2                               & ID-B                             & 6300                                                \\ \hline
+            WEEK2                               & ID-C                             & 4200                                                \\ \hline
+            WEEK3                               & ID-A                             & 6300                                                \\ \hline
+            WEEK3                               & ID-B                             & 6300                                                \\ \hline
+            WEEK3                               & ID-C                             & 4200                                                \\ \hline
+            WEEK4                               & ID-A                             & 5404                                                \\ \hline
+            WEEK4                               & ID-B                             & 6300                                                \\ \hline
+            WEEK4                               & ID-C                             & 2100                                                \\ \hline
+            WEEK5                               & ID-A                             & 2100                                                \\ \hline
+            WEEK5                               & ID-B                             & 1456                                                \\ \hline
+            WEEK5                               & ID-C                             & 97                                                  \\ \hline
+            \end{tabular}
+            \end{table}
+    \end{center}
+
+    Please don't hesitate to get in contact for more information or additional needs!
+    
+    Kind regards,\\
+    Ben Kruger and James Seymour, Operations Research.\\
+    \hrule
+    
+    Communication 5:
+    
+    Dear Pacific Paradise,
+    
+    It is very understandable to want to make sure the distribution of vaccines is fair throughout the weeks. We have introduced a condition that the proportion of people who are vaccinated at each CCD in a given week is fair across all CCDs. This was achieved by bounding the minimum and maximum proportion who received a vaccine by \(10\)\% each week. The distribution of vaccines to IDs is included below. If you would like to talk more about the full solution and how to implement it, we would be more than happy to set up a meeting.
+
+    The total cost of this solution is \(\$15382855\)
+
+    \begin{center}
+        \begin{table}[H]
+            \begin{tabular}{|l|l|l|}
+            \hline
+            \multicolumn{1}{|c|}{\textbf{Week}} & \multicolumn{1}{c|}{\textbf{ID}} & \multicolumn{1}{c|}{\textbf{Vaccines sent to   ID}} \\ \hline
+            WEEK0                               & ID-A                             & 6860                                                \\ \hline
+            WEEK0                               & ID-B                             & 6300                                                \\ \hline
+            WEEK0                               & ID-C                             & 3639                                                \\ \hline
+            WEEK1                               & ID-A                             & 6300                                                \\ \hline
+            WEEK1                               & ID-B                             & 6300                                                \\ \hline
+            WEEK1                               & ID-C                             & 4200                                                \\ \hline
+            WEEK2                               & ID-A                             & 6300                                                \\ \hline
+            WEEK2                               & ID-B                             & 6300                                                \\ \hline
+            WEEK2                               & ID-C                             & 4200                                                \\ \hline
+            WEEK3                               & ID-A                             & 6300                                                \\ \hline
+            WEEK3                               & ID-B                             & 6300                                                \\ \hline
+            WEEK3                               & ID-C                             & 4200                                                \\ \hline
+            WEEK4                               & ID-A                             & 6139                                                \\ \hline
+            WEEK4                               & ID-B                             & 6300                                                \\ \hline
+            WEEK4                               & ID-C                             & 2100                                                \\ \hline
+            WEEK5                               & ID-A                             & 2100                                                \\ \hline
+            WEEK5                               & ID-B                             & 720                                                 \\ \hline
+            WEEK5                               & ID-C                             & 97                                                  \\ \hline
+            \end{tabular}
+            \end{table}
+    \end{center}
+
+
+
+
+    Please don't hesitate to get in contact for more information or additional needs!
+    
+    Kind regards,\\
+    Ben Kruger and James Seymour, Operations Research.\\
+
+
+    }
+    
+        
+\end{document}
