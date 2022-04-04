@@ -35,9 +35,9 @@ Gurobi_Constraint_Gen = Generator[TempConstr, None, None]
 model = Model()
 
 ID_vars: Gurobi_DecisionVar_Dict = model.addVars(weeks, IDs) # Number of vaccines sent to each ID
-IDtoLVC_vars: Gurobi_DecisionVar_Dict = model.addVars(weeks, IDs, LVCs) # Number of 
+IDtoLVC_vars: Gurobi_DecisionVar_Dict = model.addVars(weeks, IDs, LVCs) # Number of
 # Use sparse variable creation here, as a 0 cost CCDtoLVC is inaccessible. Then wrap in a defaultdict to return 0 if key doesnt have val
-CCDtoLVC_vars: Gurobi_DecisionVar_Dict = defaultdict(int, 
+CCDtoLVC_vars: Gurobi_DecisionVar_Dict = defaultdict(int,
     model.addVars(filter(lambda var_key: CCDtoLVC_costs[var_key] > 0, product(weeks, CCDs, LVCs)))
 ) # Number of people at each CCD to be vaccinated at each LVC
 
@@ -49,7 +49,7 @@ total_cost = total_ID_cost + total_IDtoLVC_cost + total_CCDtoLVC_cost
 
 model.setObjective(total_cost, GRB.MINIMIZE)
 
-## Communication 1 
+## Communication 1
 
 ### Variable definitions
 
@@ -81,8 +81,8 @@ def base_LVC_constraints(CCDtoLVC_vars: Gurobi_DecisionVar_Dict, IDtoLVC_vars: G
     """
 
     for LVC in LVCs:
-        total_LVC_attendance = quicksum(CCDtoLVC_vars[CCD, LVC] for CCD in CCDs) 
-        total_vaccines_supplied_to_LVC = quicksum(IDtoLVC_vars[ID, LVC] for ID in IDs) 
+        total_LVC_attendance = quicksum(CCDtoLVC_vars[CCD, LVC] for CCD in CCDs)
+        total_vaccines_supplied_to_LVC = quicksum(IDtoLVC_vars[ID, LVC] for ID in IDs)
         yield total_LVC_attendance <= total_vaccines_supplied_to_LVC
 
 def base_ID_constraints(ID_vars: Gurobi_DecisionVar_Dict, IDtoLVC_vars: Gurobi_DecisionVar_Dict) -> Gurobi_Constraint_Gen:
@@ -100,8 +100,8 @@ def base_ID_constraints(ID_vars: Gurobi_DecisionVar_Dict, IDtoLVC_vars: Gurobi_D
 ### Apply contraints
 
 comm1_base_constraint_generator = chain(
-    base_ID_constraints(week_agnostic_ID_vars, week_agnostic_IDtoLVC_vars), 
-    base_LVC_constraints(week_agnostic_CCDtoLVC_vars, week_agnostic_IDtoLVC_vars), 
+    base_ID_constraints(week_agnostic_ID_vars, week_agnostic_IDtoLVC_vars),
+    base_LVC_constraints(week_agnostic_CCDtoLVC_vars, week_agnostic_IDtoLVC_vars),
     base_CCD_constraints(week_agnostic_CCDtoLVC_vars)
 )
 
@@ -135,8 +135,8 @@ def maximum_LVC_constraints(IDtoLVC_vars: Gurobi_DecisionVar_Dict, maximum: int)
 ### Apply constraints
 
 comm2_max_constraint_generator = chain(
-    maximum_ID_constraints(week_agnostic_ID_vars, maximum=COMM2_ID_MAX), 
-    maximum_LVC_constraints(week_agnostic_IDtoLVC_vars, maximum=COMM2_LVC_MAX), 
+    maximum_ID_constraints(week_agnostic_ID_vars, maximum=COMM2_ID_MAX),
+    maximum_LVC_constraints(week_agnostic_IDtoLVC_vars, maximum=COMM2_LVC_MAX),
 )
 
 
@@ -233,7 +233,7 @@ def distribution_tolerance_constraints(CCDtoLVC_vars: Gurobi_DecisionVar_Dict, m
         min_ratio_vaccinated_this_week, max_ratio_vaccinated_this_week = min_(CCD_vaccination_ratio_vars[week, CCD] for CCD in CCDs), max_(CCD_vaccination_ratio_vars[week, CCD] for CCD in CCDs)
         yield min_ratio_vars[week] == min_ratio_vaccinated_this_week
         yield max_ratio_vars[week] == max_ratio_vaccinated_this_week
-        
+
         yield max_ratio_vars[week] - min_ratio_vars[week] <= max_ratio_tolerance
 
 ### Apply constraints
