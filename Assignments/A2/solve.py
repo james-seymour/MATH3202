@@ -1,27 +1,51 @@
 from collections import defaultdict
 from typing import Generator, Tuple, Union
-from gurobipy import Model, GRB, TempConstr, Var, tupledict, quicksum, max_, min_
+from gurobipy import Model, GRB, TempConstr, Var, tupledict, quicksum
 from itertools import product, chain
-from vaccine2 import (
-    # Var definitions
-    weeks,
-    IDs,
-    LVCs,
-    CCDs,
 
-    # Cost definitions
-    ID_costs,
-    IDtoLVC_costs,
-    CCDtoLVC_costs,
-    LVC_upgrade_costs,
+BEN_CARRIED = True
+if BEN_CARRIED:
+    from ben_vaccine2 import (
+        # Var definitions
+        weeks,
+        IDs,
+        LVCs,
+        CCDs,
 
-    # Constraint definitions
-    CCD_pops,
+        # Cost definitions
+        ID_costs,
+        IDtoLVC_costs,
+        CCDtoLVC_costs,
+        LVC_upgrade_costs,
 
-    # Communication constraint constants
-    COMM6_ID_MAX,
-    COMM6_LVC_MAX,
-)
+        # Constraint definitions
+        CCD_pops,
+
+        # Communication constraint constants
+        COMM6_ID_MAX,
+        COMM6_LVC_MAX,
+    )
+else:
+    from vaccine2 import (
+        # Var definitions
+        weeks,
+        IDs,
+        LVCs,
+        CCDs,
+
+        # Cost definitions
+        ID_costs,
+        IDtoLVC_costs,
+        CCDtoLVC_costs,
+        LVC_upgrade_costs,
+
+        # Constraint definitions
+        CCD_pops,
+
+        # Communication constraint constants
+        COMM6_ID_MAX,
+        COMM6_LVC_MAX,
+    )
 
 # Type defs
 
@@ -107,7 +131,7 @@ def maximum_LVC_constraints(IDtoLVC_vars: Gurobi_DecisionVar_Dict, LVC_upgrade_v
 
     for LVC in LVCs:
         total_vaccines_supplied_to_LVC = quicksum(IDtoLVC_vars[ID, LVC] for ID in IDs)
-        yield total_vaccines_supplied_to_LVC <= maximum + LVC_upgrade_vars[LVC] * 7500
+        yield total_vaccines_supplied_to_LVC <= maximum + (LVC_upgrade_vars[LVC] * maximum / 2 )
 
 ### Apply contraints
 
@@ -117,7 +141,7 @@ comm6_base_constraint_generator = chain(
     base_CCD_constraints(week_agnostic_CCDtoLVC_vars),
 
     maximum_ID_constraints(week_agnostic_ID_vars, COMM6_ID_MAX),
-    maximum_LVC_constraints(week_agnostic_IDtoLVC_vars, LVC_upgrade_vars, COMM6_LVC_MAX), 
+    maximum_LVC_constraints(week_agnostic_IDtoLVC_vars, LVC_upgrade_vars, COMM6_LVC_MAX),
 )
 
 for constraint in comm6_base_constraint_generator:

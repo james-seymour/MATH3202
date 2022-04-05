@@ -31,7 +31,7 @@ ID_import_cost_per_dose = [109, 160, 168]
 IDtoLVC_cost_per_dose = [[0.2 * distance for distance in ID] for ID in IDtoLVC]
 CCDtoLVC_cost_per_dose = CCDtoLVC
 
-# Exports
+#  Exports
 
 weeks = [f"WEEK{i}" for i in range(6)]
 IDs = ["ID-A", "ID-B", "ID-C"]
