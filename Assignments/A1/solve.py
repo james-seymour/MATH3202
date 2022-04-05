@@ -54,7 +54,7 @@ model.setObjective(total_cost, GRB.MINIMIZE)
 ### Variable definitions
 
 # For Communication 1 and 2, we are agnostic of which week we are in because we don't have a notion of weeks yet.
-# Therefore, instead of writing all of the code twice, we sum the gurobi vars over weeks, 
+# Therefore, instead of writing all of the code twice, we sum the gurobi vars over weeks,
 # effectively removing the week dimension by grouping by it and aggregating with quicksum()
 
 week_agnostic_ID_vars = { ID: quicksum(ID_vars[week, ID] for week in weeks) for ID in IDs }
@@ -63,7 +63,7 @@ week_agnostic_CCDtoLVC_vars = { (CCD, LVC): quicksum(CCDtoLVC_vars[week, CCD, LV
 
 ### Contraint definitions
 
-def base_CCD_constraints(CCDtoLVC_vars: Gurobi_DecisionVar_Dict) -> Gurobi_Constraint_Gen: 
+def base_CCD_constraints(CCDtoLVC_vars: Gurobi_DecisionVar_Dict) -> Gurobi_Constraint_Gen:
     """
         Main row-based constraint for the CCDtoLVC table.\n
         For each CCD, the relevant LVCs that can be accessed from this CCD must supply a total number of vaccines that is greater than or equal to population of that CCD.
@@ -179,7 +179,7 @@ def base_weekly_LVC_constraints(CCDtoLVC_vars: Gurobi_DecisionVar_Dict, IDtoLVC_
 ### Apply constraints
 
 comm3_base_weekly_constraint_generator = chain(
-    base_weekly_ID_constraints(ID_vars, IDtoLVC_vars), 
+    base_weekly_ID_constraints(ID_vars, IDtoLVC_vars),
     base_weekly_LVC_constraints(CCDtoLVC_vars, IDtoLVC_vars)
 )
 

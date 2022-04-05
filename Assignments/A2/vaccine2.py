@@ -49,6 +49,8 @@ CCDtoLVC_costs = {(week, CCD, LVC): CCDtoLVC_cost_per_dose[CCD_i][LVC_i]
                   for week in weeks for LVC_i, LVC in enumerate(LVCs)
                   for CCD_i, CCD in enumerate(CCDs)}
 
+LVC_upgrade_costs = {LVC: LVCUCost[LVC_i] for LVC_i, LVC in enumerate(LVCs)}
+
 CCD_pops = {CCD: CCDPop[CCD_i] for CCD_i, CCD in enumerate(CCDs)}
 
 COMM6_ID_MAX = 50000
